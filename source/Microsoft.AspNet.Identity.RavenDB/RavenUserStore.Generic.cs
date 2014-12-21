@@ -9,7 +9,7 @@
     /// A generic class the exposes Identity's <see cref="IUserStore{TUser}"/> interface.
     /// 
     /// This implementation also exposes the complete gamut of Identity's core interfaces
-    /// for working with more advanced memberhip features.
+    /// for providing an exhaustive set of membership store features.
     /// </summary>
     public class RavenUserStore<TUser> : IUserStore<TUser>, IUserSecurityStampStore<TUser>, IUserPasswordStore<TUser>, IUserEmailStore<TUser>, IUserRoleStore<TUser>
         where TUser : RavenIdentityUser
