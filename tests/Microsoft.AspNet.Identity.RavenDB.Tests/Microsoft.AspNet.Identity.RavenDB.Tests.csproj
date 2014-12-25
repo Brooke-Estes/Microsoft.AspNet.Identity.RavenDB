@@ -56,9 +56,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PasswordStoreSpecifications.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RavenDocumentStorage.cs" />
-    <Compile Include="UserStoreSpecification.cs" />
+    <Compile Include="UserStoreSpecifications.cs" />
     <Compile Include="UserStoreSpecificationBase.cs" />
   </ItemGroup>
   <ItemGroup>

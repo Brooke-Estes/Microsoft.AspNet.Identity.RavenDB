@@ -5,7 +5,7 @@
     using Raven.Client;
 
     [TestFixture]
-    public class UserStoreSpecification : UserStoreSpecificationBase
+    public class UserStoreSpecifications : UserStoreSpecificationBase
     {
         private IUserStore<RavenIdentityUser> _userStore;
         
