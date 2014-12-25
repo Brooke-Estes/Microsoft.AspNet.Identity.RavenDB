@@ -2,6 +2,9 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Linq;
+    using System.Security.Claims;
     using System.Threading.Tasks;
     using Raven.Client;
 
@@ -11,7 +14,8 @@
     /// This implementation also exposes the complete gamut of Identity's core interfaces
     /// for providing an exhaustive set of membership store features.
     /// </summary>
-    public class RavenUserStore<TUser> : IUserStore<TUser>, IUserSecurityStampStore<TUser>, IUserPasswordStore<TUser>, IUserEmailStore<TUser>, IUserRoleStore<TUser>
+    public class RavenUserStore<TUser> : IUserStore<TUser>, IUserSecurityStampStore<TUser>, IUserPasswordStore<TUser>, IUserEmailStore<TUser>, IUserRoleStore<TUser>,
+        IUserLockoutStore<TUser, string>, IUserLoginStore<TUser>, IUserClaimStore<TUser>
         where TUser : RavenIdentityUser
     {
         private IAsyncDocumentSession _documentSession;
@@ -293,6 +297,261 @@
 
         #endregion
 
+        #region Implementation of IUserLockoutStore<TUser, TKey>
+
+        public Task<DateTimeOffset> GetLockoutEndDateAsync(TUser user)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            return Task.FromResult<DateTimeOffset>(user.LockoutEndDateUtc.HasValue
+                ? new DateTimeOffset(DateTime.SpecifyKind(user.LockoutEndDateUtc.Value, DateTimeKind.Utc)) : default(DateTimeOffset));
+
+
+        }
+
+        public Task SetLockoutEndDateAsync(TUser user, DateTimeOffset lockoutEnd)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            user.LockoutEndDateUtc = ((lockoutEnd == DateTimeOffset.MinValue) ? null : new DateTime?(lockoutEnd.UtcDateTime));
+            return Task.FromResult<int>(0);
+
+        }
+
+        public Task<int> IncrementAccessFailedCountAsync(TUser user)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            user.AccessFailedCount++;
+            return Task.FromResult<int>(user.AccessFailedCount);
+        }
+
+        public Task ResetAccessFailedCountAsync(TUser user)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            user.AccessFailedCount = 0;
+            return Task.FromResult<int>(0);
+        }
+
+        public Task<int> GetAccessFailedCountAsync(TUser user)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            return Task.FromResult<int>(user.AccessFailedCount);
+        }
+
+        public Task<bool> GetLockoutEnabledAsync(TUser user)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            return Task.FromResult<bool>(user.LockoutEnabled);
+        }
+
+        public Task SetLockoutEnabledAsync(TUser user, bool enabled)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            user.LockoutEnabled = true;
+            return Task.FromResult<int>(0);
+        }
+
+        #endregion
+
+        #region Implementation of IUserLoginStore<TUser>
+
+        public Task AddLoginAsync(TUser user, UserLoginInfo login)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            if (login == null)
+            {
+                throw new ArgumentNullException("login");
+            }
+
+            user.Logins = user.Logins ?? new List<RavenIdentityUserLogin>();
+
+            user.Logins.Add(new RavenIdentityUserLogin()
+            {
+                LoginProvider = login.LoginProvider,
+                ProviderKey = login.ProviderKey,
+                UserId = user.Id
+            });
+
+            return Task.FromResult<int>(0);
+        }
+
+        public Task RemoveLoginAsync(TUser user, UserLoginInfo login)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            if (login == null)
+            {
+                throw new ArgumentNullException("login");
+            }
+
+            var userLogin = user.Logins.FirstOrDefault(l =>
+                l.LoginProvider == login.LoginProvider && l.ProviderKey == login.ProviderKey);
+
+            if (userLogin != null)
+            {
+                user.Logins.Remove(userLogin);
+            }
+
+            return Task.FromResult<int>(0);
+        }
+
+        public Task<IList<UserLoginInfo>> GetLoginsAsync(TUser user)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            var logins = user.Logins
+                .Select(l => new UserLoginInfo(l.LoginProvider, l.ProviderKey))
+                .ToList();
+
+            return Task.FromResult<IList<UserLoginInfo>>(logins);
+        }
+
+        public async Task<TUser> FindAsync(UserLoginInfo login)
+        {
+            // todo: create and impelement the appropriate index for querying on the login
+            ThrowIfDisposed();
+
+            if (login == null)
+            {
+                throw new ArgumentNullException("login");
+            }
+
+            var user = await _documentSession.Query<TUser>()
+                .Where(u => u.Logins.Any(l => l.LoginProvider == login.LoginProvider && l.ProviderKey == login.ProviderKey))
+                .SingleOrDefaultAsync()
+                .ConfigureAwait(false);
+
+            return user;
+
+        }
+
+        #endregion
+
+        #region Implementation of IUserClaimStore<TUser>
+
+        public Task<IList<Claim>> GetClaimsAsync(TUser user)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            var claims = user.Claims
+                .Select(c => new Claim(c.ClaimType, c.ClaimValue))
+                .ToList();
+
+            return Task.FromResult<IList<Claim>>(claims);
+        }
+
+        public Task AddClaimAsync(TUser user, Claim claim)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            if (claim == null)
+            {
+                throw new ArgumentNullException("claim");
+            }
+
+            user.Claims = user.Claims ?? new List<RavenIdentityUserClaim>();
+            user.Claims.Add(new RavenIdentityUserClaim()
+            {
+                UserId = user.Id,
+                ClaimType = claim.Type,
+                ClaimValue = claim.Value
+            });
+
+            return Task.FromResult<int>(0);
+        }
+
+        public Task RemoveClaimAsync(TUser user, Claim claim)
+        {
+            ThrowIfDisposed();
+
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
+
+            if (claim == null)
+            {
+                throw new ArgumentNullException("claim");
+            }
+
+            var userClaim = user.Claims.SingleOrDefault(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value);
+
+            if (userClaim != null)
+            {
+                user.Claims.Remove(userClaim);
+            }
+
+            return Task.FromResult<int>(0);
+        }
+
+        #endregion
+
         #region Implementation of IDisposable
 
         public void Dispose()
@@ -313,6 +572,6 @@
         }
 
         #endregion
-
+       
     }
 }

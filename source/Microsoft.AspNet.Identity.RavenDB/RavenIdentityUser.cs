@@ -14,10 +14,12 @@
         public bool EmailConfirmed { get; set; }
         public string PasswordHash { get; set; }
         public string SecurityStamp { get; set; }
-        public virtual DateTime? LockoutEndDateUtc { get; set; }
-        public virtual bool LockoutEnabled { get; set; }
-        public virtual int AccessFailedCount { get; set; }
-        public virtual List<string> Roles { get; set; }
-         
+        public DateTime? LockoutEndDateUtc { get; set; }
+        public bool LockoutEnabled { get; set; }
+        public int AccessFailedCount { get; set; }
+        public List<string> Roles { get; set; }
+        public List<RavenIdentityUserLogin> Logins { get; set; }
+        public List<RavenIdentityUserClaim> Claims { get; set; } 
+
     }
 }

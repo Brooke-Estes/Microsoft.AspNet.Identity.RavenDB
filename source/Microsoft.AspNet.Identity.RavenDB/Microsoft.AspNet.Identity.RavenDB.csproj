@@ -50,6 +50,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RavenIdentityUserClaim.cs" />
+    <Compile Include="RavenIdentityUserLogin.cs" />
     <Compile Include="RavenIdentityRole.cs" />
     <Compile Include="RavenIdentityUser.cs" />
     <Compile Include="RavenRoleStore.Generic.cs" />
